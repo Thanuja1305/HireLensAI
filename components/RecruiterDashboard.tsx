@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { analyzeResumeForRecruiter, verifyCredlyProfile } from '../services/geminiService';
 import { CandidateMatch } from '../types';
@@ -67,36 +65,58 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ onBack }) => {
         setAnalysisResults([]);
         setProgress(0);
 
-        try {
-            const results: CandidateMatch[] = [];
-            for (let i = 0; i < resumeFiles.length; i++) {
-                const file = resumeFiles[i];
+        let completedFiles = 0;
+        const totalFiles = resumeFiles.length;
+
+        const analysisPromises = resumeFiles.map(file =>
+            (async () => {
                 try {
                     const resumeText = await extractTextFromFile(file);
                     const analysis = await analyzeResumeForRecruiter(resumeText, jobDescription);
-                    
                     const credlyVerification = await verifyCredlyProfile(analysis.candidateName);
-
-                    results.push({
+                    
+                    return {
                         ...analysis,
                         id: `${file.name}-${new Date().getTime()}`,
                         fileName: file.name,
                         resumeText: resumeText,
                         credlyVerification: credlyVerification,
-                    });
+                    };
                 } catch (individualError: any) {
-                     console.error(`Failed to process ${file.name}:`, individualError);
+                    console.error(`Failed to process ${file.name}:`, individualError);
+                    throw new Error(`${file.name}: ${individualError.message}`);
+                } finally {
+                     completedFiles++;
+                     setProgress(Math.round((completedFiles / totalFiles) * 100));
                 }
-                setProgress(((i + 1) / resumeFiles.length) * 100);
-            }
-            setAnalysisResults(results);
+            })()
+        );
 
+        try {
+            const settledResults = await Promise.allSettled(analysisPromises);
+            const successfulResults: CandidateMatch[] = [];
+            const failedMessages: string[] = [];
+
+            settledResults.forEach(result => {
+                if (result.status === 'fulfilled' && result.value) {
+                    successfulResults.push(result.value);
+                } else if (result.status === 'rejected') {
+                    failedMessages.push(result.reason.message || 'An unknown file failed.');
+                }
+            });
+
+            setAnalysisResults(successfulResults);
+
+            if (failedMessages.length > 0) {
+                setError(`Could not process ${failedMessages.length} resume(s).\n- ${failedMessages.join('\n- ')}`);
+            }
         } catch (err: any) {
-            setError(err.message || "An unexpected error occurred during analysis.");
+             setError(err.message || "An unexpected error occurred during analysis.");
         } finally {
             setIsLoading(false);
         }
     };
+
 
     return (
         <div className="max-w-7xl mx-auto animate-fade-in">
@@ -140,7 +160,7 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ onBack }) => {
                             <div className="py-1"><AlertTriangleIcon className="h-5 w-5 text-red-500 mr-3" /></div>
                             <div>
                                 <p className="font-bold">Error</p>
-                                <p className="text-sm">{error}</p>
+                                <p className="text-sm whitespace-pre-wrap">{error}</p>
                             </div>
                         </div>
                     </div>

@@ -8,6 +8,37 @@ const getAi = () => {
     return new GoogleGenAI({ apiKey: process.env.API_KEY });
 }
 
+const parseGeminiError = (error: any): string => {
+    console.error("Gemini API Error:", error);
+    if (error && typeof error.message === 'string') {
+        // Handle cases where the message is a JSON string
+        if (error.message.trim().startsWith('{')) {
+            try {
+                const errorObj = JSON.parse(error.message);
+                if (errorObj.error && errorObj.error.message) {
+                    const { code, message } = errorObj.error;
+                    if (code === 503 || message.toLowerCase().includes('overloaded')) {
+                        return "The AI model is currently overloaded. Please try again later.";
+                    }
+                    return message;
+                }
+            } catch (e) {
+                // It's not a valid JSON, fall through to default handling
+            }
+        }
+        // Handle other common error messages
+        if (error.message.toLowerCase().includes('overloaded')) {
+            return "The AI model is currently overloaded. Please try again later.";
+        }
+        if (error.message.includes('API key not valid')) {
+            return "The configured API key is not valid. Please check your configuration.";
+        }
+        return error.message;
+    }
+    return "An unexpected error occurred during analysis.";
+};
+
+
 // Schema for Job Seeker Analysis
 const jobSeekerAnalysisSchema = {
     type: Type.OBJECT,
@@ -140,8 +171,7 @@ export const analyzeResumeForJobSeeker = async (resumeText: string, jobDescripti
         return JSON.parse(text);
 
     } catch (error: any) {
-        console.error("Error analyzing resume for job seeker:", error);
-        throw new Error(error.message || "Failed to analyze resume. The AI model may be temporarily unavailable.");
+        throw new Error(parseGeminiError(error));
     }
 };
 
@@ -238,8 +268,7 @@ export const analyzeResumeForRecruiter = async (resumeText: string, jobDescripti
              throw new Error("The AI model returned an invalid response format.");
         }
     } catch (error: any) {
-        console.error("Error analyzing resume for recruiter:", error);
-        throw new Error(error.message || "Failed to analyze resume. The AI model may be temporarily unavailable.");
+        throw new Error(parseGeminiError(error));
     }
 };
 

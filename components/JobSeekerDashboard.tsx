@@ -140,7 +140,7 @@ const JobSeekerDashboard: React.FC<JobSeekerDashboardProps> = ({ onBack }) => {
                             <div className="py-1"><AlertTriangleIcon className="h-5 w-5 text-red-500 mr-3" /></div>
                             <div>
                                 <p className="font-bold">Error</p>
-                                <p className="text-sm">{error}</p>
+                                <p className="text-sm whitespace-pre-wrap">{error}</p>
                             </div>
                         </div>
                     </div>
