@@ -10,32 +10,42 @@ const getAi = () => {
 
 const parseGeminiError = (error: any): string => {
     console.error("Gemini API Error:", error);
+    let message = "An unexpected error occurred during analysis. Please check the console for details.";
+
     if (error && typeof error.message === 'string') {
-        // Handle cases where the message is a JSON string
-        if (error.message.trim().startsWith('{')) {
+        let errorMessage = error.message;
+        let lowerCaseMessage = errorMessage.toLowerCase();
+
+        // Handle JSON-formatted error messages from the API
+        if (errorMessage.trim().startsWith('{')) {
             try {
-                const errorObj = JSON.parse(error.message);
+                const errorObj = JSON.parse(errorMessage);
                 if (errorObj.error && errorObj.error.message) {
-                    const { code, message } = errorObj.error;
-                    if (code === 503 || message.toLowerCase().includes('overloaded')) {
-                        return "The AI model is currently overloaded. Please try again later.";
-                    }
-                    return message;
+                    errorMessage = errorObj.error.message;
+                    lowerCaseMessage = errorMessage.toLowerCase();
                 }
-            } catch (e) {
-                // It's not a valid JSON, fall through to default handling
-            }
+            } catch (e) { /* Fall through */ }
         }
-        // Handle other common error messages
-        if (error.message.toLowerCase().includes('overloaded')) {
-            return "The AI model is currently overloaded. Please try again later.";
+        
+        // Specific user-facing messages for common issues
+        if (lowerCaseMessage.includes('overloaded') || lowerCaseMessage.includes('503')) {
+            return "The AI model is currently overloaded. Please try again in a moment.";
         }
-        if (error.message.includes('API key not valid')) {
-            return "The configured API key is not valid. Please check your configuration.";
+        if (lowerCaseMessage.includes('api key not valid') || lowerCaseMessage.includes('permission denied')) {
+            return "Your API key is invalid or missing required permissions. Please check your configuration and ensure it's enabled for the Gemini API.";
         }
-        return error.message;
+        if (lowerCaseMessage.includes('billing') || lowerCaseMessage.includes('quota')) {
+            return "You have exceeded your API quota or there is a billing issue with your account. Please check your Google Cloud project settings.";
+        }
+        if (lowerCaseMessage.includes('invalid response format')) { // Custom error from recruiter analysis
+            return "The AI model returned an unexpected response format. This can happen during high load. Please try again.";
+        }
+        
+        // For other errors, return the original message
+        return errorMessage;
     }
-    return "An unexpected error occurred during analysis.";
+    
+    return message;
 };
 
 
@@ -231,7 +241,7 @@ const recruiterAnalysisPrompt = (resumeText: string, jobDescription: string) => 
     ${resumeText}
 `;
 
-export const analyzeResumeForRecruiter = async (resumeText: string, jobDescription: string): Promise<Omit<CandidateMatch, 'id' | 'fileName' | 'resumeText' | 'credlyVerification'>> => {
+export const analyzeResumeForRecruiter = async (resumeText: string, jobDescription: string): Promise<Omit<CandidateMatch, 'id' | 'fileName' | 'file' | 'resumeText' | 'credlyVerification'>> => {
     const ai = getAi();
     try {
         const response = await ai.models.generateContent({

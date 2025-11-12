@@ -33,7 +33,7 @@ const CandidateDetailView: React.FC<CandidateDetailViewProps> = ({ candidate }) 
                     {candidate.credlyVerification && <CredlyVerificationCard result={candidate.credlyVerification} />}
                 </div>
                 <div className="space-y-4">
-                     <ResumePreviewCard resumeText={candidate.resumeText} fileName={candidate.fileName} />
+                     <ResumePreviewCard file={candidate.file} resumeText={candidate.resumeText} />
                     <SalaryEstimateCard estimate={candidate.salaryEstimate} />
                     <FraudDetectionCard result={candidate.fraudDetection} />
                 </div>

@@ -108,6 +108,7 @@ export interface CredlyVerificationResult {
 export interface CandidateMatch {
     id: string;
     fileName: string;
+    file: File;
     resumeText: string;
     candidateName: string;
     matchScore: number;

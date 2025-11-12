@@ -47,7 +47,7 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ onBack }) => {
                     }
                 } catch (error) {
                     console.error("Error extracting text:", error);
-                    reject(new Error(`Could not parse content from ${file.name}.`));
+                    reject(new Error(`Could not parse content from ${file.name}. The file may be corrupted, password-protected, or in an unsupported format.`));
                 }
             };
             reader.onerror = (error) => reject(error);
@@ -79,6 +79,7 @@ const RecruiterDashboard: React.FC<RecruiterDashboardProps> = ({ onBack }) => {
                         ...analysis,
                         id: `${file.name}-${new Date().getTime()}`,
                         fileName: file.name,
+                        file: file,
                         resumeText: resumeText,
                         credlyVerification: credlyVerification,
                     };

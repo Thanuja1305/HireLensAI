@@ -48,7 +48,7 @@ const JobSeekerDashboard: React.FC<JobSeekerDashboardProps> = ({ onBack }) => {
                     }
                 } catch (error) {
                     console.error("Error extracting text:", error);
-                    reject(new Error("Could not parse file content."));
+                    reject(new Error("Could not read text from the file. It may be corrupted, password-protected, or in an unsupported format."));
                 }
             };
             reader.onerror = (error) => reject(error);
