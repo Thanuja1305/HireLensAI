@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { CandidateMatch } from '../types';
 import CandidateDetailView from './CandidateDetailView';
 import CandidateSidePanel from './CandidateSidePanel';
@@ -7,17 +7,38 @@ interface MatchResultsDisplayProps {
     candidates: CandidateMatch[];
 }
 
+type SortKey = 'matchScore' | 'name' | 'verificationScore';
+
 const MatchResultsDisplay: React.FC<MatchResultsDisplayProps> = ({ candidates }) => {
     const [selectedCandidate, setSelectedCandidate] = useState<CandidateMatch | null>(null);
+    const [sortBy, setSortBy] = useState<SortKey>('matchScore');
+
+    const sortedCandidates = useMemo(() => {
+        const sorted = [...candidates];
+        switch (sortBy) {
+            case 'matchScore':
+                sorted.sort((a, b) => b.matchScore - a.matchScore);
+                break;
+            case 'name':
+                sorted.sort((a, b) => a.candidateName.localeCompare(b.candidateName));
+                break;
+            case 'verificationScore':
+                sorted.sort((a, b) => b.verification.score - a.verification.score);
+                break;
+            default:
+                break;
+        }
+        return sorted;
+    }, [candidates, sortBy]);
 
     useEffect(() => {
-        // Automatically select the first candidate when results are loaded
-        if (candidates && candidates.length > 0) {
-            setSelectedCandidate(candidates[0]);
+        // Automatically select the first candidate when results are loaded or sorted
+        if (sortedCandidates && sortedCandidates.length > 0) {
+            setSelectedCandidate(sortedCandidates[0]);
         } else {
             setSelectedCandidate(null);
         }
-    }, [candidates]);
+    }, [sortedCandidates]);
 
     if (!candidates || candidates.length === 0) {
         return (
@@ -27,14 +48,35 @@ const MatchResultsDisplay: React.FC<MatchResultsDisplayProps> = ({ candidates })
             </div>
         );
     }
+    
+    const SortButton: React.FC<{ sortKey: SortKey, children: React.ReactNode }> = ({ sortKey, children }) => (
+        <button
+            onClick={() => setSortBy(sortKey)}
+            className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${
+                sortBy === sortKey
+                    ? 'bg-cyan-600 text-white shadow'
+                    : 'bg-gray-100 text-slate-600 hover:bg-gray-200'
+            }`}
+        >
+            {children}
+        </button>
+    );
 
     return (
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-2 md:p-4">
-             <h2 className="text-2xl font-bold text-slate-800 mb-4 px-2 md:px-0">Analysis Results</h2>
+             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 px-2 md:px-0">
+                <h2 className="text-2xl font-bold text-slate-800">Analysis Results</h2>
+                <div className="flex items-center gap-2 mt-2 sm:mt-0 flex-wrap">
+                    <span className="text-sm font-medium text-slate-500">Sort by:</span>
+                    <SortButton sortKey="matchScore">Best Match</SortButton>
+                    <SortButton sortKey="name">Name (A-Z)</SortButton>
+                    <SortButton sortKey="verificationScore">Verification</SortButton>
+                </div>
+            </div>
             <div className="flex flex-col md:flex-row gap-4 lg:gap-6">
                 <aside className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0">
                    <CandidateSidePanel 
-                     candidates={candidates} 
+                     candidates={sortedCandidates} 
                      selectedCandidateId={selectedCandidate?.id}
                      onSelectCandidate={setSelectedCandidate}
                    />
